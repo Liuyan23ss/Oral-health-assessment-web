@@ -2,6 +2,11 @@ import streamlit as st
 import os
 import base64
 from streamlit_option_menu import option_menu
+import streamlit as st
+import pandas as pd
+import gspread
+import json
+from google.oauth2.service_account import Credentials
 
 # ==========================================
 # 網頁基本設定 (開啟 Wide 模式)
@@ -22,6 +27,193 @@ def get_image_base64(image_path):
             b64_data = base64.b64encode(img_file.read()).decode('utf-8')
             return f"data:{mime_type};base64,{b64_data}"
     return ""
+
+# ==========================================
+# Google Sheets 連線
+# ==========================================
+@st.cache_resource
+def get_gspread_client():
+    scopes = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive",
+    ]
+
+    credentials = Credentials.from_service_account_info(
+        dict(st.secrets["gcp_service_account"]),
+        scopes=scopes,
+    )
+    client = gspread.authorize(credentials)
+    return client
+
+
+def get_worksheet(worksheet_name: str):
+    client = get_gspread_client()
+    spreadsheet = client.open_by_key(st.secrets["sheets"]["spreadsheet_id"])
+    return spreadsheet.worksheet(worksheet_name)
+
+
+@st.cache_data(ttl=30)
+def load_ktv_results():
+    worksheet = get_worksheet(st.secrets["sheets"]["ktv_worksheet_name"])
+    records = worksheet.get_all_records()
+
+    if not records:
+        return pd.DataFrame()
+
+    df = pd.DataFrame(records)
+
+    # 數值欄位轉型
+    numeric_cols = ["final_score", "overall_precision", "overall_recall", "overall_f1"]
+    for col in numeric_cols:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+
+    # category_metrics_json 轉 dict
+    if "category_metrics_json" in df.columns:
+        def parse_json(x):
+            try:
+                return json.loads(x) if x else {}
+            except:
+                return {}
+        df["category_metrics_dict"] = df["category_metrics_json"].apply(parse_json)
+
+    return df
+
+def render_ktv_results_page():
+    st.markdown("""
+        <style>
+        .ktv-banner {
+            background: linear-gradient(135deg, #fff4e6 0%, #ffe0b2 100%);
+            padding: 50px 20px;
+            text-align: center;
+            margin-bottom: 25px;
+            border-radius: 0 0 20px 20px;
+        }
+        .ktv-card {
+            background-color: white;
+            border-radius: 18px;
+            padding: 25px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+            margin-bottom: 20px;
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+        <div class="ktv-banner">
+            <h1 style="margin:0; color:#D35400; font-size:3rem; font-weight:900;">KTV檢測結果</h1>
+            <p style="margin-top:15px; color:#444; font-size:1.15rem;">
+                顯示受試者 KTV 歌唱辨識分析結果與 F1-score
+            </p>
+        </div>
+    """, unsafe_allow_html=True)
+
+    df = load_ktv_results()
+
+    if df.empty:
+        st.warning("目前還沒有 KTV 檢測結果資料。")
+        return
+
+    # 依建立時間排序，新到舊
+    if "created_at" in df.columns:
+        df = df.sort_values(by="created_at", ascending=False)
+
+    # 建立下拉選單
+    if "song_name" in df.columns and "created_at" in df.columns:
+        df["display_name"] = df["created_at"].astype(str) + "｜" + df["song_name"].astype(str)
+    elif "created_at" in df.columns:
+        df["display_name"] = df["created_at"].astype(str)
+    else:
+        df["display_name"] = df.index.astype(str)
+
+    selected_display = st.selectbox(
+        "選擇一筆檢測結果",
+        df["display_name"].tolist()
+    )
+
+    selected_row = df[df["display_name"] == selected_display].iloc[0]
+
+    # 1. 核心分數
+    st.markdown('<div class="ktv-card">', unsafe_allow_html=True)
+    st.subheader("總體表現")
+
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("F1-score", f"{selected_row.get('final_score', 0):.2f}")
+    c2.metric("Precision", f"{selected_row.get('overall_precision', 0):.3f}")
+    c3.metric("Recall", f"{selected_row.get('overall_recall', 0):.3f}")
+    c4.metric("F1", f"{selected_row.get('overall_f1', 0):.3f}")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 2. 基本資訊
+    st.markdown('<div class="ktv-card">', unsafe_allow_html=True)
+    st.subheader("檢測資訊")
+
+    info_col1, info_col2 = st.columns(2)
+
+    with info_col1:
+        st.write("**建立時間：**", selected_row.get("created_at", ""))
+        st.write("**歌曲名稱：**", selected_row.get("song_name", ""))
+        st.write("**模型：**", selected_row.get("model", ""))
+        st.write("**語言：**", selected_row.get("language", ""))
+
+    with info_col2:
+        st.write("**音檔路徑：**", selected_row.get("audio_path", ""))
+        st.write("**歌詞檔路徑：**", selected_row.get("ref_lyrics_path", ""))
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 3. 辨識結果
+    st.markdown('<div class="ktv-card">', unsafe_allow_html=True)
+    st.subheader("文字比對")
+
+    if "reference_text" in selected_row:
+        st.text_area("標準歌詞", selected_row.get("reference_text", ""), height=180)
+
+    if "recognized_text_raw" in selected_row:
+        st.text_area("Whisper 辨識結果", selected_row.get("recognized_text_raw", ""), height=180)
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 4. 聲母分類指標
+    st.markdown('<div class="ktv-card">', unsafe_allow_html=True)
+    st.subheader("分類指標分析")
+
+    category_metrics = selected_row.get("category_metrics_dict", {})
+
+    if category_metrics:
+        rows = []
+        for category, metrics in category_metrics.items():
+            rows.append({
+                "分類": category,
+                "TP": metrics.get("tp", 0),
+                "FP": metrics.get("fp", 0),
+                "FN": metrics.get("fn", 0),
+                "Precision": metrics.get("precision", 0),
+                "Recall": metrics.get("recall", 0),
+                "F1": metrics.get("f1", 0),
+            })
+
+        category_df = pd.DataFrame(rows)
+        st.dataframe(category_df, use_container_width=True, hide_index=True)
+    else:
+        st.info("目前沒有分類指標資料。")
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # 5. 歷史紀錄
+    st.markdown('<div class="ktv-card">', unsafe_allow_html=True)
+    st.subheader("最近 KTV 檢測紀錄")
+
+    preview_cols = [col for col in [
+        "created_at", "song_name", "final_score", "overall_precision", "overall_recall", "overall_f1"
+    ] if col in df.columns]
+
+    if preview_cols:
+        preview_df = df[preview_cols].copy().head(10)
+        st.dataframe(preview_df, use_container_width=True, hide_index=True)
+
+    st.markdown('</div>', unsafe_allow_html=True)
 
 def draw_navbar(active_tab):
     # active_tab: 1 (首頁), 2 (介紹), 3 (訓練)
@@ -615,72 +807,13 @@ elif selected_page == "口腔機能運動訓練":
             </div>
         </div>
     """, unsafe_allow_html=True)
+
 # ==========================================
 # 頁面 4：KTV檢測結果
 # ==========================================
 elif selected_page == "KTV檢測結果":
+    render_ktv_results_page()
 
-    st.markdown("""
-        <style>
-        .page-banner {
-            background: linear-gradient(135deg, #fff4e6 0%, #ffe0b2 100%);
-            padding: 60px 20px;
-            text-align: center;
-            margin-bottom: 30px;
-        }
-        .content-card {
-            background-color: white;
-            border-radius: 20px;
-            padding: 35px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-            margin: 20px 5%;
-        }
-        </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div class="page-banner">
-            <h1 style="margin: 0; color: #E67E22; font-size: 3rem; font-weight: 900;">
-                KTV檢測結果
-            </h1>
-            <p style="margin-top: 15px; color: #444; font-size: 1.2rem;">
-                這裡將顯示 KTV 檢測的分析結果與相關說明
-            </p>
-        </div>
-    """, unsafe_allow_html=True)
-
-    st.markdown("""
-        <div class="content-card">
-            <h2 style="color:#2C3E50;">檢測結果總覽</h2>
-            <p style="font-size:1.05rem; color:#555;">
-                這個頁面目前先建立版型，之後可放入：
-            </p>
-            <ul style="font-size:1.05rem; color:#555; line-height:1.9;">
-                <li>KTV 量測數值</li>
-                <li>檢測圖表</li>
-                <li>結果判讀</li>
-                <li>建議與追蹤說明</li>
-            </ul>
-        </div>
-    """, unsafe_allow_html=True)
-
-    col1, col2 = st.columns(2, gap="large")
-
-    with col1:
-        st.markdown("""
-            <div class="content-card">
-                <h3 style="color:#E67E22;">數據區塊</h3>
-                <p style="color:#666;">之後可放表格、量測指標、統計資料。</p>
-            </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-            <div class="content-card">
-                <h3 style="color:#E67E22;">圖表區塊</h3>
-                <p style="color:#666;">之後可放折線圖、長條圖、雷達圖等視覺化結果。</p>
-            </div>
-        """, unsafe_allow_html=True)
 # ==========================================
 # 頁面 5：舌肌運動檢測結果
 # ==========================================
