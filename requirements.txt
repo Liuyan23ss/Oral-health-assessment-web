@@ -2,4 +2,4 @@ streamlit
 pandas
 gspread
 google-auth
-Oral health assessment
+streamlit-option-menu
