@@ -83,28 +83,41 @@ def render_ktv_results_page():
     st.markdown("""
         <style>
         .ktv-banner {
-            background: linear-gradient(135deg, #fff4e6 0%, #ffe0b2 100%);
-            padding: 50px 20px;
+            position: relative;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 90px 20px;
             text-align: center;
             margin-bottom: 25px;
             border-radius: 0 0 20px 20px;
+            overflow: hidden;
         }
-        .ktv-card {
-            background-color: white;
-            border-radius: 18px;
-            padding: 25px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.08);
-            margin-bottom: 20px;
+
+        .ktv-banner::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.35);   /* 讓字更清楚 */
+        }
+
+        .ktv-banner-content {
+            position: relative;
+            z-index: 1;
         }
         </style>
     """, unsafe_allow_html=True)
 
-    st.markdown("""
-        <div class="ktv-banner">
-            <h1 style="margin:0; color:#D35400; font-size:3rem; font-weight:900;">KTV檢測結果</h1>
-            <p style="margin-top:15px; color:#444; font-size:1.15rem;">
-                顯示受試者 KTV 歌唱辨識分析結果與 F1-score
-            </p>
+    st.markdown(f"""
+        <div class="ktv-banner" style="background-image: url('{img_ktv_banner_b64}');">
+            <div class="ktv-banner-content">
+                <h1 style="margin:0; color:white; font-size:3.2rem; font-weight:900;">
+                    KTV檢測結果
+                </h1>
+                <p style="margin-top:15px; color:white; font-size:1.4rem;">
+                    顯示受試者 KTV 歌唱辨識分析結果與 F1-score
+                </p>
+            </div>
         </div>
     """, unsafe_allow_html=True)
 
@@ -262,6 +275,7 @@ img_d_b64 = get_image_base64("d.avif")
 img_e_b64 = get_image_base64("e.avif")
 img_team_b64 = get_image_base64("image_d95f6b.jpg")
 imgs = {"bg2" : get_image_base64("bg2.png"), "z1": get_image_base64("z1.png"), "z2": get_image_base64("z2.png"), "z3": get_image_base64("z3.png"),}
+img_ktv_banner_b64 = get_image_base64("ktv_banner.jpg")
 
 # 備用圖片 (若找不到圖片則顯示空白避免報錯)
 if not img_team_b64:
@@ -315,6 +329,39 @@ st.markdown(
     div[data-testid="stButton"] > button:hover {
         background-color: #218838;
     }
+    </style>
+    <style>
+
+    /* 全站字體放大基準 */
+    html {
+        font-size: 30px;  /* 原本大概 14~16，這裡直接 +20~30% */
+    }
+
+    /* 標題優化（避免過大破版） */
+    h1 { font-size: 2.5rem !important; }
+    h2 { font-size: 2rem !important; }
+    h3 { font-size: 1.6rem !important; }
+
+    /* 一般文字 */
+    p, span, label, div {
+        font-size: 1.1rem !important;
+    }
+
+    /* Streamlit 元件 */
+    .stMarkdown, .stText, .stDataFrame {
+        font-size: 1.05rem !important;
+    }
+
+    /* Button 字體 */
+    div[data-testid="stButton"] > button {
+        font-size: 1.1rem !important;
+    }
+
+    /* selectbox */
+    div[data-baseweb="select"] {
+        font-size: 1.1rem !important;
+    }
+
     </style>
     """,
     unsafe_allow_html=True
@@ -371,9 +418,9 @@ selected_page = option_menu(
             "display": "flex",
             "justify-content": "center"
         },
-        "icon": {"color": "white", "font-size": "18px"},
+        "icon": {"color": "white", "font-size": "28px"},
         "nav-link": {
-            "font-size": "18px",
+            "font-size": "28px",
             "text-align": "center",
             "margin": "0px 20px",
             "color": "white",
@@ -891,7 +938,7 @@ html_footer = f"""
 </div>
 <div style='flex: 1; min-width: 250px; background-color: #E67E22; color: white; padding: 40px 20px;'>
 <h3 style='font-weight: bold; margin-bottom: 15px; font-size: 22px; color: white;'>連絡電話</h3>
-<p style='font-size: 16px; margin: 0; font-weight: bold; line-height: 1.6;'>Email: NCKUnurse0412@gmail.com<br>Tel: 06-23533535 #2019</p>
+<p style='font-size: 16px; margin: 0; font-weight: bold; line-height: 1.6;'>陳彥旭教授<br>Email: infchen@gmail.com<br>Tel: 07-3121101#2137</p>
 </div>
 <div style='flex: 1; min-width: 250px; background-color: #D35400; color: white; padding: 40px 20px;'>
 <h3 style='font-weight: bold; margin-bottom: 15px; font-size: 22px; color: white;'>更多口腔照護資訊</h3>
