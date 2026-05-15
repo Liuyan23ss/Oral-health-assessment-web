@@ -379,6 +379,9 @@ if "main_page" not in st.session_state:
 if "sub_page" not in st.session_state:
     st.session_state.sub_page = "小小首頁"
 
+if "train_sub_page" not in st.session_state:
+    st.session_state.train_sub_page = "母頁"
+
 # ==========================================
 # 接收網址參數來控制跳頁
 # ==========================================
@@ -392,6 +395,13 @@ if "page" in query_params:
         st.session_state.sub_page = "小小首頁"
     elif target_page == "train":
         st.session_state.main_page = "口腔機能運動訓練"
+        risk = query_params.get("risk", "")
+        if risk == "low":
+            st.session_state.train_sub_page = "低風險口腔機能運動"
+        elif risk == "middle":
+            st.session_state.train_sub_page = "中風險口腔機能運動"
+        elif risk == "high":
+            st.session_state.train_sub_page = "高風險口腔機能運動"
 
 page_options = [
     "首頁",
@@ -433,27 +443,6 @@ selected_page = option_menu(
         },
     }
 )
-# Session State 初始化
-if "main_page" not in st.session_state:
-    st.session_state.main_page = "首頁"
-
-if "sub_page" not in st.session_state:
-    st.session_state.sub_page = "小小首頁"
-
-# 接收網址參數來控制跳頁
-query_params = st.query_params
-
-if "page" in query_params:
-    target_page = query_params["page"]
-
-    if target_page == "intro":
-        st.session_state.main_page = "口腔衰弱與保健介紹"
-        st.session_state.sub_page = "小小首頁"
-    elif target_page == "train":
-        st.session_state.main_page = "口腔機能運動訓練"
-
-# page_options = ["首頁", "口腔衰弱與保健介紹", "口腔機能運動訓練"]
-default_index = page_options.index(st.session_state.main_page)
 st.session_state.main_page = selected_page
 # 頁面 1：首頁 
 if selected_page == "首頁":
@@ -772,20 +761,11 @@ elif selected_page == "口腔衰弱與保健介紹":
 # 頁面 3：口腔機能運動訓練 (完整還原版)
 # ==========================================
 elif selected_page == "口腔機能運動訓練":
-    
-    # 1. CSS 樣式：定義背景與元件微調
+    # 口腔機能運動訓練頁：全部改用 Streamlit 原生按鈕，避免 HTML 連結被吃掉或無反應
     st.markdown(f"""
         <style>
-        /* 強制移除全域背景，確保頁面乾淨 */
         .stApp {{ background-image: none !important; background-color: white !important; }}
-        
-        /* 移除 Streamlit 預設邊距 */
-        .block-container {{ 
-            padding: 0rem !important; 
-            max-width: 100% !important; 
-        }}
-        
-        /* 中間 z1 背景容器 */
+        .block-container {{ padding: 0rem !important; max-width: 100% !important; }}
         .z1-bg-area {{
             background-image: url('{imgs['z1']}');
             background-size: cover;
@@ -795,8 +775,6 @@ elif selected_page == "口腔機能運動訓練":
             display: flex;
             justify-content: center;
         }}
-        
-        /* 內容白底區域：設定為稍微窄一點且置中 */
         .main-content-box {{
             background-color: white;
             padding: 40px;
@@ -807,53 +785,511 @@ elif selected_page == "口腔機能運動訓練":
             width: 90%;
             box-shadow: 0 4px 20px rgba(0,0,0,0.08);
         }}
+        .train-risk-bar {{
+            background: rgba(255,255,255,0.95);
+            padding: 16px 8% 22px 8%;
+            box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+            border-bottom: 1px solid #eef2f2;
+        }}
         </style>
     """, unsafe_allow_html=True)
 
-    # 2. 頂部 Banner (z3.png) - 加上標題文字
-    # 這裡直接用 st.image，因為 z3 本身已經包含文字與背景
-    # 1. 頂部 Banner 區塊 (z3 當底，疊加文字)
-    # 我們使用一個 div 容器來精確定位標題位置
+    # Banner：只負責顯示，不放 HTML 連結，避免按鈕無法點擊
     st.markdown(f"""
         <div style="
-            position: relative; 
-            width: 100%; 
-            height: 350px; 
-            background-image: url('{imgs['z3']}'); 
-            background-size: cover; 
+            position: relative;
+            width: 100%;
+            height: 350px;
+            background-image: url('{imgs['z3']}');
+            background-size: cover;
             background-position: center;
             display: flex;
             align-items: center;
-            justify-content: flex-end; /* 讓文字靠右 */
+            justify-content: flex-end;
             padding-right: 10%;
+            box-sizing: border-box;
         ">
             <div style="text-align: right; color: #1A5276; font-family: 'Microsoft JhengHei', sans-serif;">
-                <h1 style="font-size: 3.5rem; font-weight: 900; margin: 0; letter-spacing: 5px;">口腔衰弱</h1>
-                <h1 style="font-size: 2.5rem; font-weight: 800; margin: 0; letter-spacing: 3px;">機能運動訓練</h1>
+                <h1 style="font-size: 3.5rem !important; font-weight: 900; margin: 0; letter-spacing: 5px; color:#3498DB;">口腔衰弱</h1>
+                <h1 style="font-size: 2.5rem !important; font-weight: 800; margin: 0; letter-spacing: 3px; color:#3498DB;">機能運動訓練</h1>
                 <div style="margin-top: 20px;">
-                    <p style="font-size: 1.5rem; font-weight: bold; color: #333; margin: 0;">活到老、動到老</p>
-                    <p style="font-size: 1.1rem; color: #555; margin: 5px 0 0 0;">針對中高年齡口腔衰弱者提供的口腔機能運動訓練介紹</p>
+                    <p style="font-size: 1.5rem !important; font-weight: bold; color: #333; margin: 0;">活到老、動到老</p>
+                    <p style="font-size: 1.1rem !important; color: #555; margin: 5px 0 0 0; font-weight:700;">針對中高年齡口腔衰弱者提供的口腔機能運動訓練介紹</p>
                 </div>
             </div>
         </div>
     """, unsafe_allow_html=True)
 
-    # 3. 中間核心區 (z1 背景 + z2 圖片 + 文本內容)
-    st.markdown(f"""
-        <div class="z1-bg-area">
-            <div class="main-content-box">
-                <div style="flex: 1;">
-                    <img src="{imgs['z2']}" style="width: 100%; border-radius: 5px; box-shadow: 2px 2px 10px rgba(0,0,0,0.2);">
+    # 三個子頁入口：使用 Streamlit 原生按鈕，保證可點擊
+    st.markdown('<div class="train-risk-bar">', unsafe_allow_html=True)
+    risk_col1, risk_col2, risk_col3 = st.columns(3, gap="large")
+
+    with risk_col1:
+        if st.button("低風險口腔機能運動", key="train_go_low", use_container_width=True):
+            st.session_state.train_sub_page = "低風險口腔機能運動"
+            st.rerun()
+
+    with risk_col2:
+        if st.button("中風險口腔機能運動", key="train_go_middle", use_container_width=True):
+            st.session_state.train_sub_page = "中風險口腔機能運動"
+            st.rerun()
+
+    with risk_col3:
+        if st.button("高風險口腔機能運動", key="train_go_high", use_container_width=True):
+            st.session_state.train_sub_page = "高風險口腔機能運動"
+            st.rerun()
+
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    train_page = st.session_state.get("train_sub_page", "母頁")
+
+    if train_page == "低風險口腔機能運動":
+        # 低風險頁面
+        st.markdown("""
+            <style>
+            .low-risk-hero {
+                background: linear-gradient(90deg, #0F5F4A 0%, #B7DDD4 100%);
+                padding: 70px 8%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: white;
+            }
+            .low-risk-title {
+                font-size: 2.8rem !important;
+                font-weight: 900;
+                line-height: 1.4;
+                letter-spacing: 3px;
+            }
+            .low-risk-info {
+                color: #F4E04D;
+                font-size: 1.4rem !important;
+                font-weight: 900;
+                line-height: 1.8;
+                text-align: left;
+            }
+            .low-risk-section {
+                padding: 50px 8%;
+                background: linear-gradient(135deg, #F6FAF8 0%, #EEF4FB 100%);
+            }
+            .section-title {
+                text-align: center;
+                color: #0F5F4A;
+                font-size: 2.2rem !important;
+                font-weight: 900;
+                margin-bottom: 35px;
+            }
+            .exercise-text {
+                color: #0F5F4A;
+                font-size: 1.15rem !important;
+                line-height: 1.9;
+                font-weight: 700;
+            }
+            .exercise-title {
+                color: #00796B;
+                font-size: 1.35rem !important;
+                font-weight: 900;
+                margin-bottom: 10px;
+            }
+            .gum-card {
+                background-color: white;
+                border-left: 8px solid #28A745;
+                border-radius: 18px;
+                padding: 28px 35px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                margin-top: 35px;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div style="padding: 20px 8% 0 8%;">', unsafe_allow_html=True)
+        if st.button("〈 返回口腔機能運動訓練首頁", key="back_low_to_train"):
+            st.session_state.train_sub_page = "母頁"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="low-risk-hero">
+                <div class="low-risk-title">
+                    低風險<br>
+                    推薦口腔運動
                 </div>
-                <div style="flex: 1.2; padding-left: 20px;">
-                    <div style="line-height: 1.8; font-size: 1.05rem; color: #444; text-align: justify; font-family: 'Microsoft JhengHei', sans-serif;">
-                        透過自身或照顧者的協助執行口腔肌肉運動，提升口腔、顏面和胸腔以上的肌肉強度，增強唾液腺機能，提升吞嚥相關肌群的協調性，促進口腔和身體健康。<br><br>
-                        期許能透過日常多做口腔的肌肉訓練，促進個人的口腔機能健康，進而給予自己一個優質的晚年生活。
+                <div class="low-risk-info">
+                    口腔衰弱評估量表<br>
+                    評估為「低」風險者適用<br><br>
+                    <span style="font-size:1rem; color:white;">
+                        建議每日規律練習，維持口腔與吞嚥肌群功能。
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='padding: 55px 8% 25px 8%;'>", unsafe_allow_html=True)
+        st.markdown("""
+            <h2 style="text-align:center; color:#0F5F4A; font-weight:900; margin-bottom:25px;">
+                低風險口腔機能運動影片
+            </h2>
+        """, unsafe_allow_html=True)
+        video_col1, video_col2, video_col3 = st.columns([1.2, 2.6, 1.2])
+        with video_col2:
+            st.video("https://www.youtube.com/watch?v=x0KzmSfSrr4")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="low-risk-section">', unsafe_allow_html=True)
+        st.markdown('<div class="section-title">請您跟我這樣做</div>', unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3, gap="large")
+        with col1:
+            st.video("https://www.youtube.com/watch?v=f8cnpgQ_L8Q")
+            st.markdown("""
+                <div class="exercise-title">1. 唇舌運動</div>
+                <div class="exercise-text">張大嘴巴，伸出舌頭並向左右移動，協助訓練唇部與舌頭活動度。</div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.video("https://www.youtube.com/watch?v=Y6xIKjaxRik")
+            st.markdown("""
+                <div class="exercise-title">2. 舌肌訓練與吞嚥練習</div>
+                <div class="exercise-text">透過舌頭前伸、上抬、左右活動與吞嚥練習，提升舌肌力量與吞嚥協調。</div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.video("https://www.youtube.com/watch?v=Cf_HcD1V0SQ")
+            st.markdown("""
+                <div class="exercise-title">3. 肩頸放鬆運動</div>
+                <div class="exercise-text">放鬆肩頸與口腔周邊肌群，協助吞嚥前的肌肉準備與活動。</div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="gum-card">
+                <div class="exercise-title">4. 嚼無糖口香糖</div>
+                <div class="exercise-text">
+                    建議可透過咀嚼無糖口香糖刺激唾液分泌，促進咀嚼肌群活動，並協助維持日常口腔機能。
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    elif train_page == "中風險口腔機能運動":
+        # 中風險頁面
+        st.markdown("""
+            <style>
+            .mid-risk-hero {
+                background: linear-gradient(90deg, #8A6D00 0%, #FFE9A8 100%);
+                padding: 70px 8%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: white;
+            }
+            .mid-risk-title {
+                font-size: 2.8rem !important;
+                font-weight: 900;
+                line-height: 1.4;
+                letter-spacing: 3px;
+            }
+            .mid-risk-info {
+                color: #FFF176;
+                font-size: 1.4rem !important;
+                font-weight: 900;
+                line-height: 1.8;
+                text-align: left;
+            }
+            .mid-risk-section {
+                padding: 50px 8%;
+                background: linear-gradient(135deg, #FFFDF2 0%, #F7F1E1 100%);
+            }
+            .mid-section-title {
+                text-align: center;
+                color: #8A6D00;
+                font-size: 2.2rem !important;
+                font-weight: 900;
+                margin-bottom: 35px;
+            }
+            .mid-exercise-title {
+                color: #8A6D00;
+                font-size: 1.35rem !important;
+                font-weight: 900;
+                margin-bottom: 10px;
+            }
+            .mid-exercise-text {
+                color: #4A3B00;
+                font-size: 1.15rem !important;
+                line-height: 1.9;
+                font-weight: 700;
+            }
+            .mid-gum-card {
+                background-color: white;
+                border-left: 8px solid #FFC107;
+                border-radius: 18px;
+                padding: 28px 35px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                margin-top: 35px;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div style="padding: 20px 8% 0 8%;">', unsafe_allow_html=True)
+        if st.button("〈 返回口腔機能運動訓練首頁", key="back_mid_to_train"):
+            st.session_state.train_sub_page = "母頁"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="mid-risk-hero">
+                <div class="mid-risk-title">
+                    中風險<br>
+                    推薦口腔運動
+                </div>
+                <div class="mid-risk-info">
+                    口腔衰弱評估量表<br>
+                    評估為「中」風險者適用<br><br>
+                    <span style="font-size:1rem; color:white;">
+                        建議每日規律練習，提升口腔肌力、吞嚥協調與肩頸放鬆。
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='padding: 55px 8% 25px 8%;'>", unsafe_allow_html=True)
+        st.markdown("""
+            <h2 style="text-align:center; color:#8A6D00; font-weight:900; margin-bottom:25px;">
+                中風險口腔機能運動影片
+            </h2>
+        """, unsafe_allow_html=True)
+        video_col1, video_col2, video_col3 = st.columns([1.2, 2.6, 1.2])
+        with video_col2:
+            st.video("https://www.youtube.com/watch?v=-Kk5_tmAdDM")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="mid-risk-section">', unsafe_allow_html=True)
+        st.markdown('<div class="mid-section-title">請您跟我這樣做</div>', unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3, gap="large")
+        with col1:
+            st.video("https://www.youtube.com/watch?v=f8cnpgQ_L8Q")
+            st.markdown("""
+                <div class="mid-exercise-title">1. 唇舌運動</div>
+                <div class="mid-exercise-text">透過嘴唇、舌頭伸展與左右活動，訓練口腔活動度與協調能力。</div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.video("https://www.youtube.com/watch?v=Y6xIKjaxRik")
+            st.markdown("""
+                <div class="mid-exercise-title">2. 舌肌訓練與吞嚥練習</div>
+                <div class="mid-exercise-text">藉由舌頭前伸、上抬、左右活動與吞嚥練習，強化舌肌與吞嚥控制。</div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.video("https://www.youtube.com/watch?v=CslvsdqGyuM")
+            st.markdown("""
+                <div class="mid-exercise-title">3. 唾液腺按摩</div>
+                <div class="mid-exercise-text">透過按摩刺激唾液分泌，協助改善口乾並促進吞嚥與咀嚼準備。</div>
+            """, unsafe_allow_html=True)
+
+        col4, col5, col6 = st.columns(3, gap="large")
+        with col4:
+            st.video("https://www.youtube.com/watch?v=OxLIhTqhAbg")
+            st.markdown("""
+                <div class="mid-exercise-title">4. 口腔肌力訓練</div>
+                <div class="mid-exercise-text">訓練唇、舌、臉頰等口腔周邊肌群，提升進食與發音相關功能。</div>
+            """, unsafe_allow_html=True)
+        with col5:
+            st.video("https://www.youtube.com/watch?v=jRQvgsYUAOI")
+            st.markdown("""
+                <div class="mid-exercise-title">5. 吞嚥肌群訓練</div>
+                <div class="mid-exercise-text">搭配吞嚥動作與喉部肌群練習，強化吞嚥安全性與肌肉協調。</div>
+            """, unsafe_allow_html=True)
+        with col6:
+            st.video("https://www.youtube.com/watch?v=Cf_HcD1V0SQ")
+            st.markdown("""
+                <div class="mid-exercise-title">6. 肩頸放鬆運動</div>
+                <div class="mid-exercise-text">放鬆肩頸與口腔周邊肌肉，協助降低緊繃並提升吞嚥前準備。</div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="mid-gum-card">
+                <div class="mid-exercise-title">7. 嚼無糖口香糖</div>
+                <div class="mid-exercise-text">
+                    建議透過咀嚼無糖口香糖刺激唾液分泌，增加咀嚼肌群活動，協助維持並改善日常口腔機能。
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    elif train_page == "高風險口腔機能運動":
+        # 高風險頁面
+        st.markdown("""
+            <style>
+            .high-risk-hero {
+                background: linear-gradient(90deg, #8B1E1E 0%, #FFD6D6 100%);
+                padding: 70px 8%;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                color: white;
+            }
+            .high-risk-title {
+                font-size: 2.8rem !important;
+                font-weight: 900;
+                line-height: 1.4;
+                letter-spacing: 3px;
+            }
+            .high-risk-info {
+                color: #FFE082;
+                font-size: 1.4rem !important;
+                font-weight: 900;
+                line-height: 1.8;
+                text-align: left;
+            }
+            .high-risk-section {
+                padding: 50px 8%;
+                background: linear-gradient(135deg, #FFF7F7 0%, #F8EDED 100%);
+            }
+            .high-section-title {
+                text-align: center;
+                color: #8B1E1E;
+                font-size: 2.2rem !important;
+                font-weight: 900;
+                margin-bottom: 35px;
+            }
+            .high-exercise-title {
+                color: #B71C1C;
+                font-size: 1.35rem !important;
+                font-weight: 900;
+                margin-bottom: 10px;
+            }
+            .high-exercise-text {
+                color: #4A1C1C;
+                font-size: 1.15rem !important;
+                line-height: 1.9;
+                font-weight: 700;
+            }
+            .high-gum-card {
+                background-color: white;
+                border-left: 8px solid #D32F2F;
+                border-radius: 18px;
+                padding: 28px 35px;
+                box-shadow: 0 8px 24px rgba(0,0,0,0.08);
+                margin-top: 35px;
+            }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown('<div style="padding: 20px 8% 0 8%;">', unsafe_allow_html=True)
+        if st.button("〈 返回口腔機能運動訓練首頁", key="back_high_to_train"):
+            st.session_state.train_sub_page = "母頁"
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown("""
+            <div class="high-risk-hero">
+                <div class="high-risk-title">
+                    高風險<br>
+                    推薦口腔運動
+                </div>
+                <div class="high-risk-info">
+                    口腔衰弱評估量表<br>
+                    評估為「高」風險者適用<br><br>
+                    <span style="font-size:1rem; color:white;">
+                        建議在專業人員或照顧者陪同下練習，並依自身狀況調整強度。
+                    </span>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
+
+        st.markdown("<div style='padding: 55px 8% 25px 8%;'>", unsafe_allow_html=True)
+        st.markdown("""
+            <h2 style="text-align:center; color:#8B1E1E; font-weight:900; margin-bottom:25px;">
+                高風險口腔機能運動影片
+            </h2>
+        """, unsafe_allow_html=True)
+        video_col1, video_col2, video_col3 = st.columns([1.2, 2.6, 1.2])
+        with video_col2:
+            st.video("https://www.youtube.com/watch?v=fyY0j7RdBp0")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+        st.markdown('<div class="high-risk-section">', unsafe_allow_html=True)
+        st.markdown('<div class="high-section-title">請您跟我這樣做</div>', unsafe_allow_html=True)
+
+        col1, col2, col3 = st.columns(3, gap="large")
+        with col1:
+            st.video("https://www.youtube.com/watch?v=f8cnpgQ_L8Q")
+            st.markdown("""
+                <div class="high-exercise-title">1. 唇舌運動</div>
+                <div class="high-exercise-text">透過嘴唇、舌頭伸展與左右活動，訓練口腔活動度與協調能力。</div>
+            """, unsafe_allow_html=True)
+        with col2:
+            st.video("https://www.youtube.com/watch?v=Y6xIKjaxRik")
+            st.markdown("""
+                <div class="high-exercise-title">2. 舌肌訓練與吞嚥練習</div>
+                <div class="high-exercise-text">藉由舌頭前伸、上抬、左右活動與吞嚥練習，強化舌肌與吞嚥控制。</div>
+            """, unsafe_allow_html=True)
+        with col3:
+            st.video("https://www.youtube.com/watch?v=CslvsdqGyuM")
+            st.markdown("""
+                <div class="high-exercise-title">3. 唾液腺按摩</div>
+                <div class="high-exercise-text">透過按摩刺激唾液分泌，協助改善口乾並促進吞嚥與咀嚼準備。</div>
+            """, unsafe_allow_html=True)
+
+        col4, col5, col6 = st.columns(3, gap="large")
+        with col4:
+            st.video("https://www.youtube.com/watch?v=OxLIhTqhAbg")
+            st.markdown("""
+                <div class="high-exercise-title">4. 口腔肌力訓練</div>
+                <div class="high-exercise-text">訓練唇、舌、臉頰等口腔周邊肌群，提升進食與發音相關功能。</div>
+            """, unsafe_allow_html=True)
+        with col5:
+            st.video("https://www.youtube.com/watch?v=WEoFWL1YOK8")
+            st.markdown("""
+                <div class="high-exercise-title">5. 吞嚥安全訓練</div>
+                <div class="high-exercise-text">透過吞嚥相關動作練習，協助提升吞嚥穩定度與安全性。</div>
+            """, unsafe_allow_html=True)
+        with col6:
+            st.video("https://www.youtube.com/watch?v=jRQvgsYUAOI")
+            st.markdown("""
+                <div class="high-exercise-title">6. 吞嚥肌群訓練</div>
+                <div class="high-exercise-text">搭配喉部與吞嚥肌群練習，強化吞嚥協調與肌肉控制。</div>
+            """, unsafe_allow_html=True)
+
+        col7, col8, col9 = st.columns(3, gap="large")
+        with col7:
+            st.video("https://www.youtube.com/watch?v=Cf_HcD1V0SQ")
+            st.markdown("""
+                <div class="high-exercise-title">7. 肩頸放鬆運動</div>
+                <div class="high-exercise-text">放鬆肩頸與口腔周邊肌肉，協助降低緊繃並提升吞嚥前準備。</div>
+            """, unsafe_allow_html=True)
+        with col8:
+            st.video("https://www.youtube.com/watch?v=hUiI7M-_hHg")
+            st.markdown("""
+                <div class="high-exercise-title">8. 進階口腔協調訓練</div>
+                <div class="high-exercise-text">透過更完整的口腔與吞嚥相關動作，協助高風險族群進行整合訓練。</div>
+            """, unsafe_allow_html=True)
+        with col9:
+            st.markdown("""
+                <div class="high-gum-card" style="margin-top:0; min-height:260px; display:flex; flex-direction:column; justify-content:center;">
+                    <div class="high-exercise-title">9. 嚼無糖口香糖</div>
+                    <div class="high-exercise-text">
+                        建議可在安全情況下咀嚼無糖口香糖，刺激唾液分泌、增加咀嚼肌群活動，協助維持日常口腔機能。
+                    </div>
+                </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
+
+    else:
+        # 母頁核心介紹
+        st.markdown(f"""
+            <div class="z1-bg-area">
+                <div class="main-content-box">
+                    <div style="flex: 1;">
+                        <img src="{imgs['z2']}" style="width: 100%; border-radius: 5px; box-shadow: 2px 2px 10px rgba(0,0,0,0.2);">
+                    </div>
+                    <div style="flex: 1.2; padding-left: 20px;">
+                        <div style="line-height: 1.8; font-size: 1.05rem; color: #444; text-align: justify; font-family: 'Microsoft JhengHei', sans-serif;">
+                            透過自身或照顧者的協助執行口腔肌肉運動，提升口腔、顏面和胸腔以上的肌肉強度，增強唾液腺機能，提升吞嚥相關肌群的協調性，促進口腔和身體健康。<br><br>
+                            期許能透過日常多做口腔的肌肉訓練，促進個人的口腔機能健康，進而給予自己一個優質的晚年生活。
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
 # ==========================================
 # 頁面 4：KTV檢測結果
